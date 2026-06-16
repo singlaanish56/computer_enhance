@@ -12,3 +12,4 @@
 
 static b32 IsPrintable(instruction Instruction);
 static void PrintInstruction(instruction Instruction, FILE *Dest);
+static void SimulateInstruction(instruction Instruction, u16* Registers, FILE *Dest);

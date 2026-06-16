@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <assert.h>
+#include <unordered_map>
+#include <string>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -26,6 +28,14 @@ typedef int32_t s32;
 typedef int64_t s64;
 
 typedef int32_t b32;
+
+#if !defined(_MSC_VER)
+static int fopen_s(FILE **file, const char *filename, const char *mode)
+{
+    *file = fopen(filename, mode);
+    return *file ? 0 : 1;
+}
+#endif
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
@@ -131,3 +141,4 @@ struct instruction
     
     instruction_operand Operands[2];
 };
+

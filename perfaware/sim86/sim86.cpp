@@ -27,6 +27,10 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
     disasm_context Context = DefaultDisAsmContext();
     
     u32 Count = DisAsmByteCount;
+
+    //array of size 8 registers with each register being a 2 bytes and assigned to zero
+    u16* Registers_Storage = new u16[8]();
+
     while(Count)
     {
         instruction Instruction = DecodeInstruction(&Context, Memory, &At);
@@ -46,6 +50,7 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
             if(IsPrintable(Instruction))
             {
                 PrintInstruction(Instruction, stdout);
+                SimulateInstruction(Instruction, Registers_Storage, stdout);
                 printf("\n");
             }
         }
