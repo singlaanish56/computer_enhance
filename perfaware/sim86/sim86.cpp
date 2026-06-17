@@ -15,10 +15,12 @@
 #include "sim86_memory.h"
 #include "sim86_text.h"
 #include "sim86_decode.h"
+#include "sim86_siml.h"
 
 #include "sim86_memory.cpp"
 #include "sim86_text.cpp"
 #include "sim86_decode.cpp"
+#include "sim86_siml.cpp"
 
 static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access DisAsmStart)
 {
@@ -29,7 +31,7 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
     u32 Count = DisAsmByteCount;
 
     //array of size 8 registers with each register being a 2 bytes and assigned to zero
-    u16* Registers_Storage = new u16[8]();
+    u16* Registers_Storage = new u16[13]();
 
     while(Count)
     {

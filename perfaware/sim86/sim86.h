@@ -141,4 +141,3 @@ struct instruction
     
     instruction_operand Operands[2];
 };
-
