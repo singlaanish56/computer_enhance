@@ -12,7 +12,7 @@ static std::unordered_map<std::string, register_info> um = {
     {"dl", {3, 0x00FF, 0} }, {"dh", {3, 0xFF00, 8} }, {"dx", {3, 0xFFFF, 0} },
     {"sp", {4, 0xFFFF, 0} }, {"bp", {5, 0xFFFF, 0} }, {"si", {6, 0xFFFF, 0} }, 
     {"di", {7, 0xFFFF, 0} }, {"es", {8, 0xFFFF, 0} }, {"cs", {9, 0xFFFF, 0} },
-    {"ss", {10, 0xFFFF, 0} }, {"ds", {11, 0xFFFF, 0} }, {"flags", {12, 0x003F, 0}}
+    {"ss", {10, 0xFFFF, 0} }, {"ds", {11, 0xFFFF, 0} }, {"flags", {12, 0xFFFF, 0}}
 };
 
 static void SimulateInstruction(instruction Instruction, u16* Registers, FILE *Dest);

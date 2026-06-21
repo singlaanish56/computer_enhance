@@ -65,13 +65,241 @@ static void SimulateInstruction(instruction Instruction, u16* Registers_Storage,
             }
             case Op_add:{
                 //auto current_flags = Registers_Storage[um["flags"].first] & um["flags"].second;
+
+                auto current_value = ReadRegister(dest, Registers_Storage);
+                s32 wide_value = current_value + value;
+                auto new_value = wide_value;
                 
+                WriteRegister(dest, new_value, Registers_Storage);
+                auto stored_result = ReadRegister(dest, Registers_Storage);
+                
+                fprintf(Dest, " ; %s:0x%x->0x%x", GetRegName(dest),current_value, stored_result);
+                auto current_flags = Registers_Storage[um["flags"].Index] & um["flags"].Mask;
+
+                //zero flag
+                if((current_value + value)==0){
+
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 4);
+                    fprintf(Dest, " ; flags:->Z");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 4);
+                }
+
+                //parity flag backward compatibility only checks the last8 bits of then number
+                auto n = stored_result & 0x00FF;
+                // the idea to caluclate the odd parity is to xor the two halves of the binaru number together to cancel out the even/ same bits
+                n= n ^(n>>4);
+                n= n ^(n>>2);
+                n= n ^(n>>1);
+                if(n&1){
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 2);
+                
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags | ( 1 << 2);
+                    fprintf(Dest, " ; P");
+                }
+
+                //sign flag
+                u32 Inst_Flag = Instruction.Flags;
+                u32 w = Inst_Flag & Inst_Wide;
+
+                if((w && (new_value & 0x8000)) || (!w && (new_value & 0x0080))){
+                    Registers_Storage[um["flags"].Index] = current_flags |  (1 << 5);
+                    fprintf(Dest, " ; S");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~( 1 << 5);
+                }
+          
+
+                u16 a = (u16)current_value;
+                u16 b = (u16)value;  
+                u32 unsigned_sum = w ? ((u32)a + (u32)b) : (((u32)(a & 0xFF)) + ((u32)(b & 0xFF)));
+                
+                if((w && (unsigned_sum > 0xFFFF)) || (!w && (unsigned_sum > 0xFF))){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 1);
+                    fprintf(Dest, " ; C");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 1);
+                }
+                
+                // overflow flag
+                auto result_sign_flag = w ? ((stored_result >> 15) & 1) : ((stored_result >> 7) & 1);
+                auto result_dest_flag = w ? ((value  >> 15) & 1) : ((value  >> 7) & 1);
+                auto result_old_flag  = w ? ((current_value >> 15) & 1) : ((current_value >> 7) & 1);
+                
+                if((result_old_flag == result_dest_flag) && (result_sign_flag != result_old_flag)){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 6);
+                    fprintf(Dest, " ; O");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 6);
+                }
+                // auxillary flag
+                if (((current_value & 0xF) + (value & 0xF)) > 0xF){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 3);
+                    fprintf(Dest, " ; A");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 3);
+                }
+
+                break;
             }
             case Op_sub:{
+                auto current_value = ReadRegister(dest, Registers_Storage);
+                s32 wide_value = current_value - value;
+                auto new_value = wide_value;
+                
+                
+                WriteRegister(dest, new_value, Registers_Storage);
+                auto stored_result = ReadRegister(dest, Registers_Storage);
+                fprintf(Dest, " ; %s:0x%x->0x%x", GetRegName(dest),current_value, stored_result);
+                
+                auto current_flags = Registers_Storage[um["flags"].Index] & um["flags"].Mask;
+
+                //zero flag
+                if(new_value==0){
+
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 4);
+                    fprintf(Dest, " ; flags:->Z");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 4);
+                }
+
+                //parity flag backward compatibility only checks the last8 bits of then number
+                auto n = stored_result & 0x00FF;
+                // the idea to caluclate the odd parity is to xor the two halves of the binaru number together to cancel out the even/ same bits
+                n= n ^(n>>4);
+                n= n ^(n>>2);
+                n= n ^(n>>1);
+                if(n&1){
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 2);
+                
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags | ( 1 << 2);
+                    fprintf(Dest, " ; P");
+                }
+                
+                //sign flag
+                u32 Inst_Flag = Instruction.Flags;
+                u32 w = Inst_Flag & Inst_Wide;
+
+                if((w && (new_value & 0x8000)) || (!w && (new_value & 0x0080))){
+                    Registers_Storage[um["flags"].Index] = current_flags |  (1 << 5);
+                    fprintf(Dest, " ; S");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~( 1 << 5);
+                }
+
+                //carry flag
+                u16 a = (u16)current_value;
+                u16 b = (u16)value;
+                
+                if((w && (a < b)) || (!w && ((a & 0xFF) < (b & 0xFF)))){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 1);
+                    fprintf(Dest, " ; C");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 1);
+                }
+                
+                // overflow flag
+                auto result_sign_flag = w ? ((stored_result >> 15) & 1) : ((stored_result >> 7) & 1);
+                auto result_dest_flag = w ? ((value  >> 15) & 1) : ((value  >> 7) & 1);
+                auto result_old_flag  = w ? ((current_value >> 15) & 1) : ((current_value >> 7) & 1);
+
+                
+                if((result_old_flag ^ result_dest_flag) && (result_sign_flag ^ result_old_flag)){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 6);
+                    fprintf(Dest, " ; O");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 6);
+                }
+                
+                // auxillary flag
+                if ((current_value & 0xF) < (value & 0xF)){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 3);
+                    fprintf(Dest, " ; A");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 3);
+                }
+
+                break;
                 
             }
             case Op_cmp:{
+                auto current_value = ReadRegister(dest, Registers_Storage);
+                s32 wide_value = current_value - value;
+                auto new_value = wide_value;
+                u16 stored_result = (u16)wide_value;
+                fprintf(Dest, " ; %s:0x%x->0x%x", GetRegName(dest),current_value, stored_result);
                 
+                auto current_flags = Registers_Storage[um["flags"].Index] & um["flags"].Mask;
+
+                //zero flag
+                if(new_value==0){
+
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 4);
+                    fprintf(Dest, " ; flags:->Z");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 4);
+                }
+
+                //parity flag backward compatibility only checks the last8 bits of then number
+                auto n = stored_result & 0x00FF;
+                // the idea to caluclate the odd parity is to xor the two halves of the binaru number together to cancel out the even/ same bits
+                n= n ^(n>>4);
+                n= n ^(n>>2);
+                n= n ^(n>>1);
+                if(n&1){
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 2);
+                
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags | ( 1 << 2);
+                    fprintf(Dest, " ; P");
+                }
+                
+                //sign flag
+                u32 Inst_Flag = Instruction.Flags;
+                u32 w = Inst_Flag & Inst_Wide;
+
+                if((w && (new_value & 0x8000)) || (!w && (new_value & 0x0080))){
+                    Registers_Storage[um["flags"].Index] = current_flags |  (1 << 5);
+                    fprintf(Dest, " ; S");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~( 1 << 5);
+                }
+
+                //carry flag
+                u16 a = (u16)current_value;
+                u16 b = (u16)value;
+                
+                if((w && (a < b)) || (!w && ((a & 0xFF) < (b & 0xFF)))){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 1);
+                    fprintf(Dest, " ; C");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 1);
+                }
+                
+                // overflow flag
+                auto result_sign_flag = w ? ((stored_result >> 15) & 1) : ((stored_result >> 7) & 1);
+                auto result_dest_flag = w ? ((value  >> 15) & 1) : ((value  >> 7) & 1);
+                auto result_old_flag  = w ? ((current_value >> 15) & 1) : ((current_value >> 7) & 1);
+
+                
+                if((result_old_flag ^ result_dest_flag) && (result_sign_flag ^ result_old_flag)){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 6);
+                    fprintf(Dest, " ; O");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 6);
+                }
+                
+                // auxillary flag
+                if ((current_value & 0xF) < (value & 0xF)){
+                    Registers_Storage[um["flags"].Index] = current_flags | (1 << 3);
+                    fprintf(Dest, " ; A");
+                }else{
+                    Registers_Storage[um["flags"].Index] = current_flags & ~(1 << 3);
+                }
+
+                break;
             }
             default:
                 break;
