@@ -31,15 +31,20 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
     u32 Count = DisAsmByteCount;
 
     //array of size 8 registers with each register being a 2 bytes and assigned to zero
-    u16* Registers_Storage = new u16[13]();
-
+    u16* Registers_Storage = new u16[14]();
+    instruction instruction_storage[Count];
+    u32 instruction_index = 0;
+   // printf("%u\n", Count);
+    
     while(Count)
     {
         instruction Instruction = DecodeInstruction(&Context, Memory, &At);
         if(Instruction.Op)
         {
             if(Count >= Instruction.Size)
-            {
+            {   
+                instruction_storage[instruction_index] = Instruction;
+                instruction_index+=Instruction.Size;
                 Count -= Instruction.Size;
             }
             else
@@ -49,12 +54,7 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
             }
             
             UpdateContext(&Context, Instruction);
-            if(IsPrintable(Instruction))
-            {
-                PrintInstruction(Instruction, stdout);
-                SimulateInstruction(Instruction, Registers_Storage, stdout);
-                printf("\n");
-            }
+
         }
         else
         {
@@ -62,6 +62,21 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
             break;
         }
     }
+    
+   // printf("%zu\n", ArrayCount(instruction_storage));
+    u32 instruction_start=0;
+    while(instruction_start < ArrayCount(instruction_storage))
+    {
+        instruction Instruction = instruction_storage[instruction_start];
+        if(IsPrintable(Instruction))
+        {
+            PrintInstruction(Instruction, stdout);
+            SimulateInstruction(Instruction, Registers_Storage, instruction_start, stdout);
+           // printf("instruction start %d\n", instruction_start);
+            printf("\n");
+        }
+    }
+    
 }
 
 int main(int ArgCount, char **Args)
