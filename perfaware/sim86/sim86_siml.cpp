@@ -21,9 +21,50 @@ static void WriteRegister(register_access reg, u16 value, u16* Registers_Storage
     Registers_Storage[dest_reg_info.Index] = new_value;
 }
 
-static void SimulateInstruction(instruction Instruction, u16* Registers_Storage, u32& instruction_start, FILE *Dest)
+static u16 GetMemoryIndex(effective_address_expression memory_address, u16* Registers_Storage){
+    auto effective_address_string = GetEffectiveAddressExpression(memory_address);
+
+    u16 index =0;
+    for(register_access reg : um_memory[effective_address_string].ListOfRegisters)
+    {
+        index += ReadRegister(reg, Registers_Storage);
+    }
+
+    if(memory_address.Displacement != 0){
+        index += memory_address.Displacement;
+    }
+
+    return index;
+}
+
+static void StoreMemory(u16 Index, u16 value, u8* Memory_Storage, u32 IsWord)
 {
-    auto dest  = Instruction.Operands[0].Register;
+
+    Memory_Storage[Index] = value & 0x00FF;
+    if (IsWord) {
+        Memory_Storage[Index + 1] = (value >> 8) & 0x00FF;
+    }
+}
+
+static u16 LoadMemory(u16 Index, u8* Memory_Storage, u32 IsWord )
+{
+    u16 ans = Memory_Storage[Index];
+    if (IsWord) {
+        u16 highbyte = Memory_Storage[Index + 1];
+        ans = (highbyte << 8) | ans;
+    }
+    return ans;
+}
+
+u32 IsWord(instruction Instruction)
+{
+    u32 Inst_Flag = Instruction.Flags;
+    return Inst_Flag & Inst_Wide;
+}
+
+static void SimulateInstruction(instruction Instruction, u16* Registers_Storage,u8* Memory_Storage, u32& instruction_start, FILE *Dest)
+{
+    auto dest  = Instruction.Operands[0].Register; 
     for(u32 operandIndex=1; operandIndex<ArrayCount(Instruction.Operands); operandIndex++)
     {
         instruction_operand Operand = Instruction.Operands[operandIndex];
@@ -40,6 +81,12 @@ static void SimulateInstruction(instruction Instruction, u16* Registers_Storage,
                 }
                 case Operand_Register:{
                     value = ReadRegister(Operand.Register, Registers_Storage);
+                    break;
+                }
+                case Operand_Memory:{
+                    u16 index = GetMemoryIndex(Operand.Address, Registers_Storage);
+                    value = LoadMemory(index, Memory_Storage, IsWord(Instruction) );
+
                     break;
                 }
                 case Operand_Immediate:{
@@ -59,12 +106,19 @@ static void SimulateInstruction(instruction Instruction, u16* Registers_Storage,
                 break;
             }
             case Op_mov:{
-                auto old_value = ReadRegister(dest, Registers_Storage);
-                WriteRegister(dest,value,Registers_Storage);
-                auto new_value =ReadRegister(dest, Registers_Storage);
 
-                fprintf(Dest, " ; %s:0x%x->0x%x", GetRegName(dest),old_value, new_value);
-        
+                if(Instruction.Operands[0].Type == Operand_Register)
+                {
+                    auto old_value = ReadRegister(dest, Registers_Storage); 
+                    WriteRegister(dest,value,Registers_Storage); 
+                    auto new_value = ReadRegister(dest, Registers_Storage);
+
+                    fprintf(Dest, " ; %s:0x%x->0x%x", GetRegName(dest),old_value, new_value); 
+                }else{
+                    u16 index = GetMemoryIndex(Instruction.Operands[0].Address, Registers_Storage);
+                    StoreMemory(index, value, Memory_Storage, IsWord(Instruction));
+                }
+                
                 break;
             }
             case Op_add:{
@@ -308,11 +362,7 @@ static void SimulateInstruction(instruction Instruction, u16* Registers_Storage,
             case Op_jne:{
                 auto flags = Registers_Storage[um["flags"].Index] & um["flags"].Mask;
                 if(!(flags & (1 << 4))){
-                    //printf("operand %d\n", Instruction.Operands[0].ImmediateS32);
-                    //current_ip -= (Instruction.Size);
-                    //current_ip-=Instruction.Size;
                     s32 offset = Instruction.Operands[0].ImmediateS32;
-                    // prev_ip is the address where THIS jne instruction starts
                     current_ip = (u16)(prev_ip + offset);
                 }
                 break;

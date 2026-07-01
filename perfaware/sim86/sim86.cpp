@@ -30,11 +30,8 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
     
     u32 Count = DisAsmByteCount;
 
-    //array of size 8 registers with each register being a 2 bytes and assigned to zero
-    u16* Registers_Storage = new u16[14]();
     instruction instruction_storage[Count];
     u32 instruction_index = 0;
-   // printf("%u\n", Count);
     
     while(Count)
     {
@@ -63,16 +60,19 @@ static void DisAsm8086(memory *Memory, u32 DisAsmByteCount, segmented_access Dis
         }
     }
     
-   // printf("%zu\n", ArrayCount(instruction_storage));
+    //array of size 8 registers with each register being a 2 bytes and assigned to zero
+    u16* Registers_Storage = new u16[14]();
     u32 instruction_start=0;
+
+    //array of u8 1mb to store the memory
+    u8* Memory_Storage = new u8[1024 * 1024]();
     while(instruction_start < ArrayCount(instruction_storage))
     {
         instruction Instruction = instruction_storage[instruction_start];
         if(IsPrintable(Instruction))
         {
             PrintInstruction(Instruction, stdout);
-            SimulateInstruction(Instruction, Registers_Storage, instruction_start, stdout);
-           // printf("instruction start %d\n", instruction_start);
+            SimulateInstruction(Instruction, Registers_Storage,Memory_Storage, instruction_start, stdout);
             printf("\n");
         }
     }
